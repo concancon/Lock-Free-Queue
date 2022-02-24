@@ -1,47 +1,95 @@
-#include <chrono>
+
 #include <future>
 #include <iostream>
 #include <numeric>
 #include <thread>
-#include <vector>
+#include <deque>
 
-void getInputAndPrint(std::promise<int> number,
-                      std::future<int> resultFromMathThread) {
-    std::cout << "# getString() start\n";
-    std::cout << "# getString(): Please enter an int. Whenever...\n";
-    int input = 0;
-    // std::getline(std::cin, input);
 
-    std::cin >> input;
 
-    number.set_value(input);
+class InputOutput{
+    
+public:
+    
+    InputOutput(){
+        
+        std::cout<< "our q is initialized and has a size of: " << inputQueue.size() << std::endl;
+        
+        
+    }
+    
+    
+    void getInput(){
+        
+        
+        
+        
+        int input = 1;
+        
+        //inputPromise = std::promise<void>{};
+        while(input){
+            
+            
+            
+            std::cout<< "please input a number " <<std::endl;
+        
+            std::cin >> input;
+            
+            if(input){
+                
+                
+                inputQueue.push_front(input);
+                inputPromise.set_value();
+               
+            }
+            //dont push 0
+            
+            std::cout<< "now our q has size " << inputQueue.size() << std::endl;
+        }
+    }
+  
+    std::deque<int> inputQueue; //should be private?
+    std::promise<void> inputPromise;
+    
+};
 
-    std::cout << "received " << resultFromMathThread.get() << std::endl;
-}
 
-void modifyInput(std::promise<int> resultPromise, std::future<int> userInput) {
 
-    std::cout << "now we are in the math thread" << std::endl;
+class Background{
+    
+public:
+    Background(){
+  
+    }
+    
+    void process(std::future<void> future){
+        
+        std::cout<< "waiting for future.get  "  <<std::endl;
+        future.get();
+        std::cout<< "future was got: "  <<std::endl;
+        
+    }
+    
+    std::deque<int> outputQueue;
+    std::future<void> futureFromInput;
 
-    auto input = userInput.get();
+};
 
-    resultPromise.set_value(input);
-}
+
 
 int main() {
+    
+    
+    InputOutput io;
+    
+    std::thread inputOutputThread(&InputOutput::getInput, &io);
 
-    std::promise<int> key_promise;
-    std::future<int> key_future = key_promise.get_future();
+    //auto future = io.inputPromise.get_future();
+    std::thread backgroundThread(&Background::process, Background(), io.inputPromise.get_future());
 
-    std::promise<int> math_promise;
-    std::future<int> math_future = math_promise.get_future();
+    inputOutputThread.join();
+    backgroundThread.join();
 
-    std::thread work_thread(getInputAndPrint, std::move(key_promise),
-                            std::move(math_future));
-
-    std::thread math_thread(modifyInput, std::move(math_promise),
-                            std::move(key_future));
-
-    work_thread.join();
-    math_thread.join();
+    
+    
 }
